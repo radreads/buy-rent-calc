@@ -8,18 +8,18 @@ import CollapsibleSection from '../common/CollapsibleSection';
 const DEFAULT_SCENARIO: Scenario = {
   name: 'Default',
   rent: {
-    monthlyRent: 2000,
-    utilities: 200,
-    rentersInsurance: 30,
+    monthlyRent: 9750,
+    utilities: 300,
+    rentersInsurance: 150,
   },
   buy: {
-    purchasePrice: 400000,
-    downPayment: 80000,
-    interestRate: 3.5,
+    purchasePrice: 3200000,
+    downPayment: 800000,
+    interestRate: 6,
     loanTerm: 30,
-    propertyTax: 4000,
-    maintenance: 300,
-    homeInsurance: 150,
+    propertyTax: 38400,
+    maintenance: 2000,
+    homeInsurance: 1500,
   }
 };
 
