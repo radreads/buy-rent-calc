@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { RentScenario, BuyScenario, Scenario } from '@/types/calculator';
+import { RentScenario, BuyScenario, Scenario, MarketAssumptions } from '@/types/calculator';
 import RentInputs from './RentInputs';
 import BuyInputs from './BuyInputs';
 import ResultsDashboard from './ResultsDashboard';
 import CollapsibleSection from '../common/CollapsibleSection';
+import MarketAssumptionsInputs from './MarketAssumptions';
 
 const DEFAULT_SCENARIO: Scenario = {
   name: 'Default',
@@ -20,6 +21,14 @@ const DEFAULT_SCENARIO: Scenario = {
     propertyTax: 38400,
     maintenance: 2000,
     homeInsurance: 1500,
+  },
+  assumptions: {
+    annualRentIncrease: 3,
+    annualHomeAppreciation: 4,
+    annualInvestmentReturn: 7,
+    annualMaintenanceIncrease: 2,
+    annualInsuranceIncrease: 3,
+    annualPropertyTaxIncrease: 2,
   }
 };
 
@@ -41,6 +50,13 @@ export default function Calculator() {
     setScenario(prev => ({
       ...prev,
       buy: buyValues
+    }));
+  };
+
+  const handleAssumptionsChange = (assumptionValues: MarketAssumptions) => {
+    setScenario(prev => ({
+      ...prev,
+      assumptions: assumptionValues
     }));
   };
 
@@ -66,6 +82,13 @@ export default function Calculator() {
             values={scenario.buy}
             onChange={handleBuyChange}
             errors={errors.buy}
+          />
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Market Assumptions">
+          <MarketAssumptionsInputs
+            values={scenario.assumptions}
+            onChange={handleAssumptionsChange}
           />
         </CollapsibleSection>
 
