@@ -10,8 +10,10 @@ import {
   Tooltip,
   Legend,
   LineElement,
-  PointElement
+  PointElement,
+  Filler
 } from 'chart.js';
+import React from 'react';
 
 ChartJS.register(
   CategoryScale,
@@ -21,7 +23,8 @@ ChartJS.register(
   PointElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 interface YearlyData {
@@ -40,9 +43,10 @@ interface YearlyData {
 
 interface Props {
   scenario: Scenario;
+  onAnalysisComplete?: (breakEvenYear: number | null) => void;
 }
 
-export default function ResultsDashboard({ scenario }: Props) {
+export default function ResultsDashboard({ scenario, onAnalysisComplete }: Props) {
   // Calculate monthly mortgage payment
   const principal = scenario.buy.purchasePrice - scenario.buy.downPayment;
   const monthlyInterest = scenario.buy.interestRate / 100 / 12;
@@ -72,7 +76,7 @@ export default function ResultsDashboard({ scenario }: Props) {
 
   // Break-even and wealth change analysis
   const calculateAnalysis = () => {
-    const YEARS_TO_ANALYZE = 30;
+    const YEARS_TO_ANALYZE = scenario.timeHorizon;
     const ANNUAL_RENT_INCREASE = scenario.assumptions.annualRentIncrease / 100;
     const ANNUAL_HOME_APPRECIATION = scenario.assumptions.annualHomeAppreciation / 100;
     const INVESTMENT_RETURN_RATE = scenario.assumptions.annualInvestmentReturn / 100;
@@ -85,8 +89,8 @@ export default function ResultsDashboard({ scenario }: Props) {
 
     // Initial values
     let rentCumulative = 0;
-    let buyCumulative = 0; // Remove down payment from initial cumulative
-    let currentRent = totalRentCost;
+    let buyCumulative = 0;
+    let currentRent = scenario.rent.monthlyRent;
     let currentMaintenance = scenario.buy.maintenance;
     let currentInsurance = scenario.buy.homeInsurance;
     let currentPropertyTax = scenario.buy.propertyTax / 12;
@@ -102,9 +106,6 @@ export default function ResultsDashboard({ scenario }: Props) {
       rentCumulative += yearlyRent;
       currentRent *= (1 + ANNUAL_RENT_INCREASE);
 
-      // Monthly savings for renter (difference between buy and rent costs)
-      const monthlySavings = totalBuyCost - totalRentCost;
-      
       // Calculate yearly costs for buying
       const yearlyMortgage = monthlyMortgage * 12;
       const yearlyMaintenance = currentMaintenance * 12;
@@ -122,18 +123,20 @@ export default function ResultsDashboard({ scenario }: Props) {
       currentInsurance *= (1 + ANNUAL_INSURANCE_INCREASE);
       currentPropertyTax *= (1 + ANNUAL_PROPERTY_TAX_INCREASE);
 
+      // Monthly savings for renter (difference between buy and rent costs)
+      const monthlySavings = totalBuyCost - totalRentCost;
+
       // Investment portfolio growth (down payment + monthly savings)
       investmentPortfolio *= (1 + INVESTMENT_RETURN_RATE);
       investmentPortfolio += monthlySavings * 12;
 
       // Calculate yearly costs for buying (excluding mortgage payment)
-      const yearlyBuyingCost = yearlyMaintenance + 
-        yearlyInsurance + yearlyPropertyTax;
+      const yearlyBuyingCost = yearlyMaintenance + yearlyInsurance + yearlyPropertyTax;
       buyCumulative += yearlyBuyingCost;
 
       // Calculate net worth positions
-      const buyerNetWorth = homeValue - remainingPrincipal - buyCumulative;
-      const renterNetWorth = investmentPortfolio - rentCumulative;
+      const buyerNetWorth = homeValue - remainingPrincipal;
+      const renterNetWorth = investmentPortfolio;
 
       // Calculate yearly wealth changes
       const yearlyWealthChangeRent = year === 1 ? 0 : ((renterNetWorth - lastRenterNetWorth) / Math.abs(lastRenterNetWorth)) * 100;
@@ -163,6 +166,11 @@ export default function ResultsDashboard({ scenario }: Props) {
       }
     }
 
+    // If we never break even within the analysis period, set breakEvenYear to null
+    if (yearlyData[yearlyData.length - 1].renterNetWorth > yearlyData[yearlyData.length - 1].buyerNetWorth) {
+      breakEvenYear = null;
+    }
+
     return {
       breakEvenYear,
       yearlyData
@@ -170,6 +178,11 @@ export default function ResultsDashboard({ scenario }: Props) {
   };
 
   const analysis = calculateAnalysis();
+
+  // Call the callback with break-even year
+  React.useEffect(() => {
+    onAnalysisComplete?.(analysis.breakEvenYear);
+  }, [analysis.breakEvenYear, onAnalysisComplete]);
 
   // Monthly cost comparison chart
   const monthlyComparisonData = {
@@ -276,6 +289,66 @@ export default function ResultsDashboard({ scenario }: Props) {
     <>
       <div className="bg-white rounded-lg shadow p-6 space-y-8">
         <div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Break-even Analysis</h2>
+          <div className="h-[400px]">
+            <Line 
+              data={{
+                labels: analysis.yearlyData.map(d => `Year ${d.year}`),
+                datasets: [
+                  {
+                    label: 'Cost Difference (Buy - Rent)',
+                    data: analysis.yearlyData.map(d => d.buyCumulative - d.rentCumulative),
+                    borderColor: 'rgb(234, 88, 12)',
+                    backgroundColor: 'rgba(234, 88, 12, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                  }
+                ]
+              }}
+              options={{
+                ...chartOptions,
+                plugins: {
+                  ...chartOptions.plugins,
+                  title: {
+                    display: true,
+                    text: 'Cumulative Cost Difference Over Time'
+                  }
+                },
+                scales: {
+                  ...chartOptions.scales,
+                  y: {
+                    ...chartOptions.scales.y,
+                    title: {
+                      display: true,
+                      text: 'Buy Cost - Rent Cost ($)'
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Net Worth Comparison</h2>
+          <div className="h-[400px]">
+            <Line 
+              data={netWorthData}
+              options={{
+                ...chartOptions,
+                plugins: {
+                  ...chartOptions.plugins,
+                  title: {
+                    display: true,
+                    text: 'Net Worth Over Time'
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+
+        <div>
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Monthly Cost Comparison</h2>
           <div className="h-[300px]">
             <Bar data={monthlyComparisonData} options={chartOptions} />
@@ -379,25 +452,6 @@ export default function ResultsDashboard({ scenario }: Props) {
                 />
               </div>
             </div>
-
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Net Worth Comparison</h3>
-              <div className="h-[400px]">
-                <Line 
-                  data={netWorthData}
-                  options={{
-                    ...chartOptions,
-                    plugins: {
-                      ...chartOptions.plugins,
-                      title: {
-                        display: true,
-                        text: 'Net Worth Over Time'
-                      }
-                    }
-                  }}
-                />
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -443,9 +497,9 @@ export default function ResultsDashboard({ scenario }: Props) {
                   {analysis.yearlyData.map((data, index) => {
                     const yearlyRent = data.rentCumulative - (index === 0 ? 0 : analysis.yearlyData[index - 1].rentCumulative);
                     const yearlyBuyCosts = data.buyCumulative - (index === 0 ? 0 : analysis.yearlyData[index - 1].buyCumulative);
-                    const principalPaid = index === 0 ? 
-                      monthlyMortgage * 12 - (principal * scenario.buy.interestRate / 100) :
-                      analysis.yearlyData[index - 1].remainingMortgage - data.remainingMortgage;
+                    const yearlyInterestPaid = index === 0 ? principal * scenario.buy.interestRate / 100 : 
+                      analysis.yearlyData[index - 1].remainingMortgage * scenario.buy.interestRate / 100;
+                    const principalPaid = monthlyMortgage * 12 - yearlyInterestPaid;
 
                     return (
                       <tr key={data.year} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>

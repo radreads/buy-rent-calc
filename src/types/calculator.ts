@@ -25,6 +25,7 @@ export interface MarketAssumptions {
 
 export interface Scenario {
   name: string;
+  timeHorizon: number;
   rent: RentScenario;
   buy: BuyScenario;
   assumptions: MarketAssumptions;

@@ -32,7 +32,7 @@ export default function MarketAssumptionsInputs({ values, onChange }: Props) {
         label="Annual Investment Return"
         value={values.annualInvestmentReturn}
         onChange={handleChange('annualInvestmentReturn')}
-        placeholder="7"
+        placeholder="5"
       />
       <PercentageInput
         label="Annual Maintenance Increase"
